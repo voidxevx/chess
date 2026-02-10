@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="BuildScanner">
+    <option name="projects">
+      <list><![CDATA[{
+  "name": "chess",
+  "version": "0.0.0",
+  "path": "/home/voidxev/projects/chess",
+  "steps": [
+    {
+      "name": "install",
+      "description": "Copy build artifacts to prefix path",
+      "kind": "install_artifact"
+    },
+    {
+      "name": "uninstall",
+      "description": "Remove build artifacts from prefix path",
+      "kind": "uninstall"
+    },
+    {
+      "name": "test",
+      "description": "Run tests",
+      "kind": "run"
+    }
+  ],
+  "modules": [
+    {
+      "root": "src/core.zig",
+      "public": true,
+      "imports": []
+    },
+    {
+      "root": "src/root.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "core",
+          "owner": 0,
+          "module": 0
+        }
+      ]
+    }
+  ],
+  "dependencies": []
+}]]></list>
+    </option>
+  </component>
+  <component name="ZigToolchain" toolchain="8fe66b0b-009e-40da-8464-aef994598d07" />
+</project>

@@ -1,0 +1,13 @@
+[package]
+name = "chess"
+version = "0.1.0"
+edition = "2024"
+build = "build.rs"
+
+[lints.rust]
+unused = "allow"
+unsafe_op_in_unsafe_fn = "allow"
+
+[dependencies]
+crossterm = "0.29.0"
+tokio = { version = "1.49.0", features = ["full"]}
