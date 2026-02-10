@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2024"
 build = "build.rs"
 
+[lib]
+name = "chess_rs_bridge"
+crate-type = ["staticlib"]
+
 [lints.rust]
 unused = "allow"
 unsafe_op_in_unsafe_fn = "allow"

@@ -7,6 +7,7 @@ fn main() {
     // run zig build command
     let status = Command::new("zig")
         .arg("build")
+        .arg("-Dlib=true")
         .status()
         .expect("Unable to run zig build");
 
