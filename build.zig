@@ -11,7 +11,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
     });
 
-    // root module -- this is seperate to allow it to be used for the static library 
+    // root module -- this is separate to allow it to be used for the static library
     // and as a module that can be included by the zig executables
     const root_mod = b.createModule(.{
         .root_source_file = b.path("src/root.zig"),
@@ -23,7 +23,7 @@ pub fn build(b: *std.Build) void {
     });
 
     // branch of zig build that only compiles the the static library linked by rust
-    // invloked using zig build -Dlib=true
+    // invoked using zig build -Dlib=true
     const lib_only = b.option(bool, "lib", "Compile only the static library") orelse false;
     if (lib_only) {
         // main library accessed by rust files
@@ -63,9 +63,13 @@ pub fn build(b: *std.Build) void {
             }),
         });
 
+        client_exe.pie = true;
+
         // link the rust static library into the client exe
         client_exe.addLibraryPath(b.path("target/debug"));
         client_exe.linkSystemLibrary("chess_rs_bridge");
+        client_exe.linkSystemLibrary("unwind");
+        client_exe.linkLibC();
         b.installArtifact(client_exe);
 
 
@@ -86,6 +90,7 @@ pub fn build(b: *std.Build) void {
         // link the rust static library into the server head exe
         head_exe.addLibraryPath(b.path("target/debug"));
         head_exe.linkSystemLibrary("chess_rs_bridge");
+        head_exe.linkSystemLibrary("unwind");
         b.installArtifact(head_exe);
 
         // tests for client

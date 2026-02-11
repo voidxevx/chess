@@ -18,7 +18,32 @@
       "kind": "uninstall"
     },
     {
-      "name": "test",
+      "name": "cargo",
+      "description": "Build the rust static lib before zig exes",
+      "kind": "run"
+    },
+    {
+      "name": "test-client",
+      "description": "Run client tests",
+      "kind": "run"
+    },
+    {
+      "name": "test-head",
+      "description": "Run server head tests",
+      "kind": "run"
+    },
+    {
+      "name": "run-client",
+      "description": "Run the client executable",
+      "kind": "run"
+    },
+    {
+      "name": "run-head",
+      "description": "Run the server head executable",
+      "kind": "run"
+    },
+    {
+      "name": "test-root",
       "description": "Run tests",
       "kind": "run"
     }
@@ -28,6 +53,38 @@
       "root": "src/core.zig",
       "public": true,
       "imports": []
+    },
+    {
+      "root": "src/client/main.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "chess",
+          "owner": 0,
+          "module": 3
+        },
+        {
+          "name": "core",
+          "owner": 0,
+          "module": 0
+        }
+      ]
+    },
+    {
+      "root": "src/head/main.zig",
+      "public": false,
+      "imports": [
+        {
+          "name": "chess",
+          "owner": 0,
+          "module": 3
+        },
+        {
+          "name": "core",
+          "owner": 0,
+          "module": 0
+        }
+      ]
     },
     {
       "root": "src/root.zig",
