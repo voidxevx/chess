@@ -1,4 +1,5 @@
 mod controller;
+mod window;
 
 use std::io::{self, Write, stdout};
 use std::sync::{Arc, Mutex};
@@ -10,6 +11,7 @@ use crate::board::{
     deinit_board,
 };
 use crate::client::controller::{Dispatchable, Dispatcher};
+use crate::client::window::{GenericWindow, Window, Windowable};
 
 #[allow(unsafe_op_in_unsafe_fn)]
 unsafe fn clean_application() -> io::Result<()> {
@@ -53,8 +55,8 @@ pub unsafe extern "C" fn main_loop(local: bool) -> bool {
     /////////////////////
     let run_state = Arc::new(Mutex::new(true));
 
+    // event dispatcher
     let mut dispatcher = Dispatcher::new();
-
     // close game loop
     let run_state_handle = run_state.clone();
     dispatcher.add_event_binding(Box::new(controller::KeyEvent::new(
@@ -69,25 +71,41 @@ pub unsafe extern "C" fn main_loop(local: bool) -> bool {
         }
     )));
 
+    let mut window = Window::Generic(
+        GenericWindow::new(
+            (45, 45),
+            dispatcher,
+            run_state,
+            "Test Window".to_string(),
+        )
+    );
+
 
     ///////////////
     // MAIN LOOP //
     ///////////////
     unsafe {
         match (|| -> io::Result<()> {
+            let mut stdout = stdout();
+
             /* Main loop */
             loop {
+                let mut buffer = String::new();
+                window.render(&mut buffer)?;
+                write!(io::stdout(), "{}\r\n", buffer)?;
+                stdout.flush()?;
+
                 // Event dispatching
                 if let Event::Key(event) = event::read()? {
-                    dispatcher.dispatch(&event.code, &event.kind, &event.modifiers)?;
+                    window.handle_event(&event.code, &event.kind, &event.modifiers)?;
                 }
 
                 // check the run state of the game
-                let run_guard = run_state.lock().unwrap();
-                if !*run_guard {
-                    stdout().flush()?;
+                if window.should_close() {
+                    stdout.flush()?;
                     return Ok(());
                 }
+
             }
             /* Main loop */
         })() /* Error handling */ {
