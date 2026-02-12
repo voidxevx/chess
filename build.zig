@@ -88,7 +88,7 @@ pub fn build(b: *std.Build) void {
         });
 
         // link the rust static library into the server head exe
-        client_exe.addLibraryPath(b.path("target/debug"));
+        head_exe.addLibraryPath(b.path("target/debug"));
         head_exe.linkSystemLibrary("bridge");
         head_exe.linkSystemLibrary("unwind");
         b.installArtifact(head_exe);
