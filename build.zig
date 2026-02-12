@@ -67,7 +67,7 @@ pub fn build(b: *std.Build) void {
 
         // link the rust static library into the client exe
         client_exe.addLibraryPath(b.path("target/debug"));
-        client_exe.linkSystemLibrary("chess_rs_bridge");
+        client_exe.linkSystemLibrary("bridge");
         client_exe.linkSystemLibrary("unwind");
         client_exe.linkLibC();
         b.installArtifact(client_exe);
@@ -88,8 +88,8 @@ pub fn build(b: *std.Build) void {
         });
 
         // link the rust static library into the server head exe
-        head_exe.addLibraryPath(b.path("target/debug"));
-        head_exe.linkSystemLibrary("chess_rs_bridge");
+        client_exe.addLibraryPath(b.path("target/debug"));
+        head_exe.linkSystemLibrary("bridge");
         head_exe.linkSystemLibrary("unwind");
         b.installArtifact(head_exe);
 

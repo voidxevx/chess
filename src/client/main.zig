@@ -10,6 +10,7 @@ const clientAllocator = std.heap.page_allocator;
 
 pub fn main() !void {
 
+    // terminal arguments
     var local = false;
     {
         const args = try std.process.argsAlloc(clientAllocator);
@@ -21,7 +22,7 @@ pub fn main() !void {
     }
 
 
-
+    // main loop
     if (!main_loop(local)) {
         return MainErrors.MainLoopError;
     }
