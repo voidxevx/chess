@@ -3,7 +3,10 @@ use std::io::{Stdout, StdoutLock, Write};
 use std::process::Output;
 use std::sync::{Arc, Mutex};
 use crossterm::event::{KeyCode, KeyEventKind, KeyModifiers};
-use crossterm::{terminal, ExecutableCommand};
+use crossterm::{cursor, execute, terminal, ExecutableCommand, QueueableCommand};
+use crossterm::cursor::MoveTo;
+use crossterm::style::{Color, Colored};
+use crossterm::style::Colored::ForegroundColor;
 use crate::client::controller::{Dispatchable, Dispatcher};
 
 pub trait Windowable {
@@ -12,22 +15,24 @@ pub trait Windowable {
     fn handle_event(&mut self, code: &KeyCode, kind: &KeyEventKind, mods: &KeyModifiers) -> io::Result<()>;
     fn should_close(&self) -> bool;
 
-    fn render(&self, target: &mut String) -> io::Result<()>;
+    fn render(&self, target: &mut impl Write) -> io::Result<()>;
 }
 
 
 pub struct GenericWindow {
     controller: Dispatcher,
     size: (u16, u16),
+    position: (u16, u16),
     run_state: Arc<Mutex<bool>>,
     title: String,
 }
 
 impl GenericWindow {
-    pub fn new(size: (u16, u16), controller: Dispatcher, state: Arc<Mutex<bool>>, title: String) -> GenericWindow {
+    pub fn new(size: (u16, u16), position: (u16, u16), controller: Dispatcher, state: Arc<Mutex<bool>>, title: String) -> GenericWindow {
         GenericWindow {
             controller,
             size,
+            position,
             run_state: state,
             title,
         }
@@ -50,9 +55,29 @@ impl Windowable for GenericWindow {
         !*self.run_state.lock().unwrap()
     }
 
-    fn render(&self, target: &mut String) -> io::Result<()> {
-        target.push_str("┌");
-        target.push_str(&self.title);
+    fn render(&self, target: &mut impl Write) -> io::Result<()> {
+        let (w, h) = self.get_size();
+        let (x_pos, y_pos) = self.position;
+
+        execute!(target, MoveTo(x_pos, y_pos))?;
+        // draw top
+        let top_length = w as usize - (self.title.len() + 2);
+        write!(target, "┌{}{}┐", self.title, &"─".repeat(top_length))?;
+
+        // draw body
+        for y in 0..h - 2 {
+            execute!(target, MoveTo(x_pos, y_pos + y + 1))?;
+            write!(target, "│")?;
+            for x in 0..w - 2
+            {
+                write!(target, " ")?;
+            }
+            write!(target, "│")?;
+        }
+
+        // draw bottom
+        execute!(target, MoveTo(x_pos, y_pos + h - 1))?;
+        write!(target, "└{}┘", &"─".repeat(w as usize - 2))?;
         Ok(())
     }
 }
@@ -87,7 +112,7 @@ impl Windowable for Window {
         }
     }
 
-    fn render(&self, target: &mut String) -> io::Result<()> {
+    fn render(&self, target: &mut impl Write) -> io::Result<()> {
         match self {
             Window::Generic(win) => win.render(target)
         }

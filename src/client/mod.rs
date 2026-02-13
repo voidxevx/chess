@@ -1,10 +1,13 @@
 mod controller;
 mod window;
 
-use std::io::{self, Write, stdout};
+use std::arch::x86_64::_store_mask16;
+use std::io::{self, Write, stdout, Cursor};
 use std::sync::{Arc, Mutex};
 use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+use crossterm::{execute, ExecutableCommand, QueueableCommand};
+use crossterm::cursor::{Hide, MoveTo, Show};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen};
 
 use crate::board::{
     init_board,
@@ -20,6 +23,7 @@ unsafe fn clean_application() -> io::Result<()> {
 
     // disable terminal raw mode.
     disable_raw_mode()?;
+    execute!(io::stdout(), Clear(ClearType::All), MoveTo(0, 0), Show, LeaveAlternateScreen)?;
     Ok(())
 }
 
@@ -73,13 +77,13 @@ pub unsafe extern "C" fn main_loop(local: bool) -> bool {
 
     let mut window = Window::Generic(
         GenericWindow::new(
-            (45, 45),
+            (70, 45),
+            (10, 5),
             dispatcher,
-            run_state,
+            run_state.clone(),
             "Test Window".to_string(),
         )
     );
-
 
     ///////////////
     // MAIN LOOP //
@@ -87,12 +91,11 @@ pub unsafe extern "C" fn main_loop(local: bool) -> bool {
     unsafe {
         match (|| -> io::Result<()> {
             let mut stdout = stdout();
-
+            execute!(io::stdout(), Hide, EnterAlternateScreen)?;
             /* Main loop */
             loop {
-                let mut buffer = String::new();
-                window.render(&mut buffer)?;
-                write!(io::stdout(), "{}\r\n", buffer)?;
+                stdout.queue(Clear(ClearType::All))?;
+                window.render(&mut stdout)?;
                 stdout.flush()?;
 
                 // Event dispatching
