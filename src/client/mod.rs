@@ -1,5 +1,7 @@
 mod controller;
 mod widget;
+mod board_widget;
+mod widget_build;
 
 use std::io::{self, Write, stdout};
 use std::sync::{Arc, Mutex};
@@ -12,8 +14,9 @@ use crate::board::{
     init_board,
     deinit_board,
 };
-use crate::client::controller::{Dispatchable, Dispatcher};
-use crate::client::widget::{WidgetBuilder, WidgetType, Widget};
+use crate::client::controller::{Dispatchable, Dispatcher, EventType, KeyEvent};
+use crate::client::widget::{Widget};
+use crate::client::widget_build::{WidgetType, WindgetBuilder};
 
 #[allow(unsafe_op_in_unsafe_fn)]
 unsafe fn clean_application() -> io::Result<()> {
@@ -61,105 +64,36 @@ pub unsafe extern "C" fn main_loop(local: bool) -> bool {
     // STATE VARIABLES //
     /////////////////////
     let run_state = Arc::new(Mutex::new(true));
-    let mut widgets = Vec::new();
+    let mut widgets: Vec<Box<dyn Widget>> = Vec::new();
 
+    // Global input events
+    let mut global = WindgetBuilder::new(WidgetType::GlobalIn).build();
     let mut global_dispatcher = Dispatcher::new();
-    // close game loop
-    let run_state_handle = run_state.clone();
-    global_dispatcher.add_event_binding(Box::new(controller::KeyEvent::new(
+    let state_handle = run_state.clone();
+    KeyEvent::new(
         KeyCode::Char('q'),
         KeyModifiers::NONE,
         KeyEventKind::Press,
-        true,
+        false,
         move || -> io::Result<()> {
-            let mut run_state_guard = run_state_handle.lock().unwrap();
-            *run_state_guard = false;
+            let mut state_guard = state_handle.lock().unwrap();
+            *state_guard = false;
             Ok(())
         }
-    )));
-
-    let mut global_widget = WidgetBuilder::new()
-        .win_type(WidgetType::GlobalInput)
-        .build();
-    global_widget.attach_dispatcher(global_dispatcher);
-    widgets.push(global_widget);
-
-    let mut moving_window = WidgetBuilder::new()
-        .win_type(WidgetType::Generic)
-        .size((3, 3))
-        .build();
-
-    let mut moving_window_controller = Dispatcher::new();
-    let moving_window_handle = moving_window.get_data_handle().expect("Couldn't get window handle");
-    moving_window_controller.add_event_binding(Box::new(controller::KeyEvent::new(
-        KeyCode::Left,
-        KeyModifiers::NONE,
-        KeyEventKind::Press,
-        true,
-        move || -> io::Result<()> {
-            let mut data_guard = moving_window_handle.lock().unwrap();
-            (*data_guard).position.0 -= 1;
-            drop(data_guard);
-            Ok(())
-        }
-    )));
-
-    let moving_window_handle = moving_window.get_data_handle().expect("Couldn't get window handle");
-    moving_window_controller.add_event_binding(Box::new(controller::KeyEvent::new(
-        KeyCode::Right,
-        KeyModifiers::NONE,
-        KeyEventKind::Press,
-        true,
-        move || -> io::Result<()> {
-            let mut data_guard = moving_window_handle.lock().unwrap();
-            (*data_guard).position.0 += 1;
-            drop(data_guard);
-            Ok(())
-        }
-    )));
-
-    let moving_window_handle = moving_window.get_data_handle().expect("Couldn't get window handle");
-    moving_window_controller.add_event_binding(Box::new(controller::KeyEvent::new(
-        KeyCode::Up,
-        KeyModifiers::NONE,
-        KeyEventKind::Press,
-        true,
-        move || -> io::Result<()> {
-            let mut data_guard = moving_window_handle.lock().unwrap();
-            (*data_guard).position.1 -= 1;
-            drop(data_guard);
-            Ok(())
-        }
-    )));
-
-    let moving_window_handle = moving_window.get_data_handle().expect("Couldn't get window handle");
-    moving_window_controller.add_event_binding(Box::new(controller::KeyEvent::new(
-        KeyCode::Down,
-        KeyModifiers::NONE,
-        KeyEventKind::Press,
-        true,
-        move || -> io::Result<()> {
-            let mut data_guard = moving_window_handle.lock().unwrap();
-            (*data_guard).position.1 += 1;
-            drop(data_guard);
-            Ok(())
-        }
-    )));
-
-    moving_window.attach_dispatcher(moving_window_controller);
-    widgets.push(moving_window);
+    ).bind(&mut global_dispatcher);
+    global.attach_dispatcher(global_dispatcher);
+    widgets.push(global);
 
     ///////////////
     // MAIN LOOP //
     ///////////////
+    let mut stdout = stdout();
     unsafe {
         match (|| -> io::Result<()> {
-            let mut stdout = stdout();
             execute!(io::stdout(), Hide, EnterAlternateScreen)?;
             /* Main loop */
             loop {
-                stdout.queue(Clear(ClearType::All))?;
-                // window.render(&mut stdout)?;
+                execute!(stdout, Clear(ClearType::All))?;
                 for widget in &widgets {
                     widget.render(&mut stdout)?;
                 }
@@ -167,10 +101,18 @@ pub unsafe extern "C" fn main_loop(local: bool) -> bool {
 
                 // Event dispatching
                 if let Event::Key(event) = event::read()? {
+                    let event = EventType::Key(event.code, event.modifiers, event.kind);
                     for widget in widgets.iter_mut() {
-                        widget.handle_event(&event.code, &event.kind, &event.modifiers)?;
+                        widget.handle_event(&EventType::Update)?;
+                        widget.handle_event(&event)?;
+                    }
+                } else {
+                    for widget in widgets.iter_mut() {
+                        widget.handle_event(&EventType::Update)?;
                     }
                 }
+
+
 
                 // check the run state of the game
                 let run_state_guard = run_state.lock().unwrap();
@@ -184,7 +126,7 @@ pub unsafe extern "C" fn main_loop(local: bool) -> bool {
         })() /* Error handling */ {
             // failure
             Err(e) => {
-                println!("\x1b[31m[ERROR]\x1b[0m {e}");
+                write!(stdout, "\x1b[31m[ERROR]\x1b[0m {}", e).unwrap();
                 clean_application()
                     .expect("\x1b[31m[ERROR]\x1b[0m Failed to clean up application");
                 false
